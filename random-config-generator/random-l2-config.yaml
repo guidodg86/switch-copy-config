@@ -1,0 +1,16 @@
+#To run ansible-playbook -i inventory random-l2-config.yaml -e ansible_user=cisco
+
+- name: Override device configuration of all VLANs with provided configuration
+  hosts: all
+  gather_facts: no 
+
+  tasks:
+
+    - name: Create vlans
+      cisco.ios.ios_vlans:
+        config:
+          - vlan_id: 101
+            name: Test22
+          - vlan_id: 102
+            name: Test2
+        state: overridden
