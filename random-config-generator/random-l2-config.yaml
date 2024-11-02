@@ -1,21 +1,13 @@
+#Generates 30 random vlans and assign them as native vlan or access vlan to the different ports
 #To run ansible-playbook -i inventory random-l2-config.yaml -e ansible_user=cisco
 
 - name: Override device configuration of all VLANs with provided configuration
   hosts: all
   gather_facts: no 
   vars:
-    switchport_types: ['access', 'trunk'] 
     needed_vlans: "{{ range(30) | list }}"
      
-
-
-
-
   tasks:
-    # - name: Print the random number
-    #   debug: var=random_number
-    # - name: Print a list of number
-    #   debug: var=mysequence
 
     - name: Create random vlans id
       ansible.builtin.set_fact:
@@ -23,20 +15,114 @@
       loop: "{{  needed_vlans }}"
       register: target_vlans
 
-    - name: Print a list of number
-      debug: var=target_vlans
+    - name: Create empty list for selected vlan ids
+      ansible.builtin.set_fact:
+        vlan_ids: []
+
+    - name: Create list with vlan ids only
+      ansible.builtin.set_fact:
+        vlan_ids: "{{ vlan_ids | default([]) + [ item['ansible_facts']['vlan'] ] }}"
+      loop: "{{  target_vlans['results']  }}"
+
+    # - name: Print a list of vlan ids
+    #   debug: var=vlan_ids
 
 
-    - name: Print a list of number
-      debug: var="{{ item }}"
-      loop: "{{ vlan | json_query('[*]') | flatten }}"
+    # - name: Print a list of number
+    #   debug: var=target_vlans['results']
+
+    # - name: Print a list of number
+    #   debug: var="{{ item['ansible_facts']['vlan'] }}"
+    #   with_items: "{{ target_vlans['results'] | json_query('[*]') | flatten }}"
   
+    - name: Remove all vlans
+      cisco.ios.ios_vlans:
+        config:
+          - vlan_id: 1
+            name: Default vlan
+        state: overridden
 
 
-    # - name: Create vlans
-    #   cisco.ios.ios_vlans:
-    #     config:
-    #       - vlan_id: "{{ item | int }}"
-    #         name: "{{ 'ACCESS_VLAN_' + item }}"
-    #     state: overridden
-    #   with_items: target_vlans
+    - name: Create vlans
+      cisco.ios.ios_vlans:
+        config:
+          - vlan_id: "{{ item['ansible_facts']['vlan'] | int }}"
+            name: "{{ 'ACCESS_VLAN_' + item['ansible_facts']['vlan'] }}"
+        state: merged
+      with_items: "{{ target_vlans['results'] | json_query('[*]') | flatten }}"
+
+
+    #cannot use state replaced/overriden looks like bug https://github.com/ansible-collections/cisco.ios/issues/44 https://github.com/ansible/ansible/issues/68061 still there
+    #before applying this I need to manually run 'switchport trunk encapsulation dot1q' on every port
+    - name: Configure interfaces
+      cisco.ios.ios_l2_interfaces:
+        config:
+          - name: GigabitEthernet0/1
+            mode: access
+            access:
+              vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet0/2
+            mode: access
+            access:
+              vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet0/3
+            mode: access
+            access:
+              vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet1/0
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet1/1
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet1/2
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet1/3
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet2/0
+            mode: access
+            access:
+              vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet2/1
+            mode: access
+            access:
+              vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet2/2
+            mode: access
+            access:
+              vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet2/3
+            mode: access
+            access:
+              vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet3/0
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet3/1
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet3/2
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+          - name: GigabitEthernet3/3
+            mode: trunk
+            trunk:
+              encapsulation: dot1q #this stills needs to be here to avoid failure
+              native_vlan: "{{ vlan_ids | random | int }}"
+        state: replaced
