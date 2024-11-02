@@ -3,14 +3,40 @@
 - name: Override device configuration of all VLANs with provided configuration
   hosts: all
   gather_facts: no 
+  vars:
+    switchport_types: ['access', 'trunk'] 
+    needed_vlans: "{{ range(30) | list }}"
+     
+
+
+
 
   tasks:
+    # - name: Print the random number
+    #   debug: var=random_number
+    # - name: Print a list of number
+    #   debug: var=mysequence
 
-    - name: Create vlans
-      cisco.ios.ios_vlans:
-        config:
-          - vlan_id: 101
-            name: Test22
-          - vlan_id: 102
-            name: Test2
-        state: overridden
+    - name: Create random vlans id
+      ansible.builtin.set_fact:
+        vlan: "{{ range(2,1000) | random }}"
+      loop: "{{  needed_vlans }}"
+      register: target_vlans
+
+    - name: Print a list of number
+      debug: var=target_vlans
+
+
+    - name: Print a list of number
+      debug: var="{{ item }}"
+      loop: "{{ vlan | json_query('[*]') | flatten }}"
+  
+
+
+    # - name: Create vlans
+    #   cisco.ios.ios_vlans:
+    #     config:
+    #       - vlan_id: "{{ item | int }}"
+    #         name: "{{ 'ACCESS_VLAN_' + item }}"
+    #     state: overridden
+    #   with_items: target_vlans
